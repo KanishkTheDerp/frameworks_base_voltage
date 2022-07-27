@@ -310,12 +310,9 @@ public class BatteryMeterView extends LinearLayout implements DarkReceiver {
 
     private void setPercentTextAtCurrentLevel() {
         if (mBatteryPercentView != null) {
-            // Use the high voltage symbol ⚡ (u26A1 unicode) but prevent the system
-            // to load its emoji colored variant with the uFE0E flag
-            String bolt = "\u26A1";
-            CharSequence mChargeIndicator = mCharging && (mBatteryStyle == BATTERY_STYLE_TEXT ||
+            String indicator = mCharging && (mBatteryStyle == BATTERY_STYLE_TEXT ||
                 mBatteryStyle == BATTERY_STYLE_FULL_CIRCLE)
-                ? (bolt + " ") : "";
+                ? ("+" + " ") : "";
             batteryPercentViewSetText(mChargeIndicator +
                 NumberFormat.getPercentInstance().format(mLevel / 100f));
             setContentDescription(
