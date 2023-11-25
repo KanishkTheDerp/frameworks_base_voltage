@@ -73,12 +73,9 @@ import com.android.systemui.statusbar.notification.stack.AnimationProperties;
 import com.android.systemui.statusbar.phone.DozeParameters;
 import com.android.systemui.statusbar.phone.NotificationIconAreaController;
 import com.android.systemui.statusbar.phone.NotificationIconContainer;
-<<<<<<< HEAD
 import com.android.systemui.statusbar.phone.ScreenOffAnimationController;
 import com.android.systemui.statusbar.ui.SystemBarUtilsState;
-=======
 import com.android.systemui.tuner.TunerService;
->>>>>>> 1a2b21eb13f7 (SystemUI: Add pixel style lockscreen weather based OmniJaws)
 import com.android.systemui.util.ViewController;
 import com.android.systemui.util.concurrency.DelayableExecutor;
 import com.android.systemui.util.settings.SecureSettings;
@@ -111,7 +108,6 @@ public class KeyguardClockSwitchController extends ViewController<KeyguardClockS
     private final DumpManager mDumpManager;
     private final ClockEventController mClockEventController;
     private final LogBuffer mLogBuffer;
-<<<<<<< HEAD
     private final NotificationIconContainerAlwaysOnDisplayViewModel mAodIconsViewModel;
     private final KeyguardRootViewModel mKeyguardRootViewModel;
     private final ConfigurationState mConfigurationState;
@@ -120,10 +116,8 @@ public class KeyguardClockSwitchController extends ViewController<KeyguardClockS
     private final ScreenOffAnimationController mScreenOffAnimationController;
     private final AlwaysOnDisplayNotificationIconViewStore mAodIconViewStore;
     private final StatusBarIconViewBindingFailureTracker mIconViewBindingFailureTracker;
-=======
     private final TunerService  mTunerService;
 
->>>>>>> 1a2b21eb13f7 (SystemUI: Add pixel style lockscreen weather based OmniJaws)
     private FrameLayout mSmallClockFrame; // top aligned clock
     private FrameLayout mLargeClockFrame; // centered clock
 
@@ -178,7 +172,9 @@ public class KeyguardClockSwitchController extends ViewController<KeyguardClockS
     private final ContentObserver mShowWeatherObserver = new ContentObserver(null) {
         @Override
         public void onChange(boolean change) {
-            setWeatherVisibility();
+            if (!mShowWeather) {
+                setWeatherVisibility();
+            }
         }
     };
 
@@ -308,8 +304,6 @@ public class KeyguardClockSwitchController extends ViewController<KeyguardClockS
             collectFlow(mStatusArea, mKeyguardInteractor.isActiveDreamLockscreenHosted(),
                     mIsActiveDreamLockscreenHostedCallback);
         }
-
-        mTunerService.addTunable(this, LOCKSCREEN_WEATHER_ENABLED);
     }
 
     public KeyguardClockSwitch getView() {
@@ -376,19 +370,26 @@ public class KeyguardClockSwitchController extends ViewController<KeyguardClockS
         mKeyguardUnlockAnimationController.addKeyguardUnlockAnimationListener(
                 mKeyguardUnlockAnimationListener);
 
-        updateWeatherView();
+        mTunerService.addTunable(this, LOCKSCREEN_WEATHER_ENABLED);
 
+        updateViews();
+    }
+
+    private void updateViews() {
         if (mSmartspaceController.isEnabled()) {
+            removeViewsFromStatusArea();
+
             View ksv = mView.findViewById(R.id.keyguard_slice_view);
             int viewIndex = mStatusArea.indexOfChild(ksv);
-            ksv.setVisibility(View.GONE);
+            ksv.setVisibility(mShowWeather ? View.VISIBLE : View.GONE);
 
-            removeViewsFromStatusArea();
-            addSmartspaceView();
-            // TODO(b/261757708): add content observer for the Settings toggle and add/remove
-            //  weather according to the Settings.
-            if (mSmartspaceController.isDateWeatherDecoupled()) {
-                addDateWeatherView();
+            if (!mShowWeather) {
+                addSmartspaceView();
+                if (mSmartspaceController.isDateWeatherDecoupled()) {
+                    addDateWeatherView();
+                    setDateWeatherVisibility();
+                    setWeatherVisibility();
+                }
             }
         }
         if (!migrateClocksToBlueprint()) {
@@ -454,19 +455,11 @@ public class KeyguardClockSwitchController extends ViewController<KeyguardClockS
                 }
             }
         });
+        updateViews();
     }
 
     void onLocaleListChanged() {
-        if (mSmartspaceController.isEnabled()) {
-            removeViewsFromStatusArea();
-            addSmartspaceView();
-            if (mSmartspaceController.isDateWeatherDecoupled()) {
-                mDateWeatherView.removeView(mWeatherView);
-                addDateWeatherView();
-                setDateWeatherVisibility();
-                setWeatherVisibility();
-            }
-        }
+        updateViews();
     }
 
     private void addDateWeatherView() {
@@ -809,7 +802,7 @@ public class KeyguardClockSwitchController extends ViewController<KeyguardClockS
         }
 
         return ((mCurrentClockSize == LARGE) ? clock.getLargeClock() : clock.getSmallClock())
-                .getConfig().getHasCustomWeatherDataDisplay();
+                .getConfig().getHasCustomWeatherDataDisplay() && !mShowWeather;
     }
 
     private void removeViewsFromStatusArea() {
